@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import os
 
 # Function to handle the questionnaire form
@@ -13,8 +12,8 @@ def questionnaire_form():
         # Information about the child
         nom_enfant = st.text_input("Nom de l'enfant")
         prenom_enfant = st.text_input("Prénom de l'enfant")
-        age_enfant = st.number_input("Âge de l'enfant", min_value=0, max_value=100, step=1)
-        genre_enfant = st.radio("Genre de l'enfant", options=['Femme', 'Homme', 'Autre', 'Préfère ne pas dire'])
+        age_enfant = st.number_input("Âge de l'enfant", min_value=6, max_value=16, step=1)
+        relation_evaluateur_enfant = st.selectbox("Relation de l'évaluateur avec l'enfant", options=["Parent", "Tuteur", "Enseignant", "Professionnel de santé", "Autre"])
 
         # Evaluation criteria
         criteres = [
@@ -41,76 +40,74 @@ def questionnaire_form():
                 "prenom_evaluateur": prenom_evaluateur,
                 "nom_enfant": nom_enfant,
                 "prenom_enfant": prenom_enfant,
-                "age_enfant": age_enfant,
-                "genre_enfant": genre_enfant,
-                "evaluations": evaluations
+                "aelation_evaluateur_enfant": relation_evaluateur_enfant,
+                **evaluations
             }
+        
+def apply_custom_css():
+    st.markdown("""
+    <style>
+    /* Change the background color of the sidebar */
+    .css-1d391kg { background-color: #f0f2f6; }
+    
+    /* Change the font style and color of the title and text */
+    h1, .stText { font-family: Arial, sans-serif; color: #333; }
+    
+    /* Style the form */
+    .stForm {
+        border: 2px solid #4CAF50;
+        border-radius: 5px;
+        padding: 20px;
+    }
+
+    /* Style the submit button */
+    .stButton>button {
+        border: 2px solid #4CAF50;
+        border-radius: 20px;
+        color: white;
+        background-color: #4CAF50;
+        padding: 10px 24px;
+        cursor: pointer;
+        font-size: 18px;
+    }
+
+    /* Style the submit button on hover */
+    .stButton>button:hover {
+        background-color: #45a049;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Function to save responses to a CSV file
 def save_responses_to_csv(response, csv_file):
-    evaluations = response.pop('evaluations')
-    personal_info = response
-    
-    all_data = {**personal_info, **evaluations}
-    data_df = pd.DataFrame([all_data])
+    data_df = pd.DataFrame([response])
     
     header = not os.path.exists(csv_file)
     data_df.to_csv(csv_file, mode='a', header=header, index=False)
 
-# Function for downloading the CSV file
-def download_csv_file(csv_file):
-    with open(csv_file, "rb") as file:
-        st.download_button(label="Télécharger les réponses", data=file, file_name=os.path.basename(csv_file), mime="text/csv")
-
-# Function to display evaluation chart
-def display_evaluation_chart(evaluations):
-    eval_counts = pd.Series(list(evaluations.values())).value_counts().reindex(["Très insuffisant", "Insuffisant", "Satisfaisant", "Très satisfaisant"], fill_value=0)
-    
-    # Création du diagramme circulaire
-    fig, ax = plt.subplots()
-    ax.pie(eval_counts, labels=eval_counts.index, autopct='%1.1f%%', startangle=90, colors=['red', 'orange', 'yellow', 'green'])
-    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-    plt.title('Répartition des Évaluations')
-    st.pyplot(fig)
-
-
 def main():
-    st.title('Thermomètre comportemental')
-    st.write("Veuillez remplir le questionnaire suivant pour évaluer les comportements.")
 
-    # Définir le répertoire et le nom du fichier CSV
-    csv_dir = 'C:/Users/khrib/OneDrive/Bureau/stage_clinicog/adhd_question'
+    apply_custom_css()  # Apply the custom CSS
+   # Définir le chemin relatif ou absolu vers l'image
+    logo_path = 'images/logo.jpg'  
+    # Afficher le logo de la clinique
+    st.image(logo_path, use_column_width=True)
+    st.title("Questionnaire sur le TDAH pour enfant")
+    st.write("Veuillez remplir le questionnaire suivant pour évaluer les comportements.")
+    # Define the directory and name of the CSV file
+    csv_dir = 'data'  # Adjust the path according to your needs
+    if not os.path.exists(csv_dir):
+        os.makedirs(csv_dir)
     csv_file = os.path.join(csv_dir, 'evaluations_comportementales.csv')
 
-    # Initialisation ou récupération de l'état de la soumission du formulaire
-    if 'submitted' not in st.session_state:
-        st.session_state['submitted'] = False
-
-    form_response = questionnaire_form()
-    if form_response:
-        save_responses_to_csv(form_response, csv_file)
-        st.session_state['submitted'] = True
-        st.write("Merci d'avoir rempli le questionnaire. Vos réponses ont été enregistrées.")
-    
-    # Option pour l'utilisateur de visualiser les données
-    if st.session_state['submitted']:
-        if st.button("Afficher les données soumises"):
-            try:
-                df = pd.read_csv(csv_file)
-                st.dataframe(df)
-                download_csv_file(csv_file)
-            except Exception as e:
-                st.error("Erreur lors de la lecture du fichier CSV. Assurez-vous qu'il est formaté correctement.")
-                st.error(f"Détails de l'erreur : {e}")
+    response = questionnaire_form()
+    if response:
+        save_responses_to_csv(response, csv_file)
+        st.success("Merci d'avoir rempli le questionnaire. Vos réponses ont été enregistrées.")
         
-        if st.button("Afficher la répartition des évaluations"):
-            try:
-                # Supposons que 'evaluations' est toujours dans form_response grâce à la soumission
-                # Ceci est juste pour la démonstration; ajustez selon la logique de votre application
-                display_evaluation_chart(form_response["evaluations"])
-            except Exception as e:
-                st.error("Impossible d'afficher la répartition des évaluations.")
-                st.error(f"Détails de l'erreur : {e}")
+        # Allow user to download the CSV file
+        with open(csv_file, "rb") as file:
+            st.download_button(label="Télécharger les réponses", data=file, file_name=os.path.basename(csv_file), mime="text/csv")
 
 if __name__ == "__main__":
     main()
